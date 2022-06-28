@@ -1,0 +1,624 @@
+<html>
+<head>
+    <style>
+        body {margin:0px}
+    </style>
+</head>
+<body>
+<script src = "three.js"></script>
+<script src = "TextGeometry.js"></script>
+<script src = "FontLoader.js"></script>
+
+<script>
+
+//import { FontLoader } from 'https://threejs.org/examples/jsm/loaders/FontLoader.js';		// to step 11
+//import { TextGeometry } from 'https://threejs.org/examples/jsm/geometries/TextGeometry.js'; // to step 11
+
+globals = {}
+globals.cameramode_label = "camera mode (press enter for command mode)";
+globals.typingmode_label = "typing mode: ";
+globals.attach_nearest = true;
+parameters = {}
+parameters_previously = {}
+
+const quick_commands = ["redraw","floor","ceiling","wall","remove"]
+const nondraw_commands = ["readfile","savefile"]
+
+
+//query = document.createElement("input");
+//query.setAttribute("type","textarea");
+//document.body.append(query);
+//query.setAttribute("width","1000")
+
+div = document.createElement("div");
+div.setAttribute("style","font-family:verdana;font-size:24px;color:yellow");
+div.innerHTML = globals.cameramode_label;
+document.body.append(div);
+
+document.body.style.backgroundColor = "#000000"
+        
+
+const camera = new THREE.PerspectiveCamera( 50, window.innerWidth / (window.innerHeight - 50) );
+const scene = new THREE.Scene();
+        
+        
+const renderer = new THREE.WebGLRenderer({antialias:true})
+renderer.setSize(window.innerWidth,window.innerHeight - 50)
+document.body.appendChild(renderer.domElement)
+
+const ambientlight = new THREE.AmbientLight(0xffffff,0.1)
+const pointlight = new THREE.PointLight(0xffffff,0.4)
+pointlight.position.set(0,2,0)
+
+const boxgeometry = new THREE.SphereGeometry(1,30,30)
+const material = new THREE.MeshPhongMaterial({color:0xffaa11,flatShading:false,opacity:0.9,transparent:true,side: THREE.DoubleSide})
+const mesh = new THREE.Mesh(boxgeometry,material)
+mesh.castShadow = true;
+mesh.position.set(-3,0,-3)
+
+scene.add(ambientlight, pointlight)
+scene.add(mesh)
+
+const planegeometry = new THREE.PlaneGeometry(20,20)
+const redmaterial = new THREE.MeshPhongMaterial({color:0xff6532,flatShading:false,side: THREE.DoubleSide})
+mesh_grid = new THREE.Mesh(planegeometry,redmaterial)
+mesh_grid.position.set(0,-1,1)
+mesh_grid.rotation.x=Math.PI/2
+
+const wireframe = new THREE.WireframeGeometry(planegeometry);
+const lines = new THREE.LineSegments(wireframe)
+lines.position.set(0,-1,1)
+lines.rotation.x=Math.PI/2
+
+const gridhelper = new THREE.GridHelper(20,20);
+gridhelper.position.set(0,-1,1)
+
+scene.add(gridhelper)
+
+//scene.add(lines)
+
+scene.add(mesh_grid)
+
+scene.background = new THREE.Color(0xffffff);
+scene.fog = new THREE.Fog(0xffffff,0,35);
+
+//camera.position.z = 5
+
+
+// 1001fonts
+// fonts.google.com
+// gero3.github.io/facetype.js/
+
+
+const loader = new THREE.FontLoader();
+loader.load('Joan_Regular.json', (font) => {
+    const textGeo = new THREE.TextGeometry('Hi How are You',
+    {
+        font: font,
+        size: 20,
+        height: 5,
+        curveSegments: 12,
+        bevelEnabled: true,
+        bevelThickness: 5,
+        bevelSize: 2,
+        bevelOffset: 2,
+        bevelSegments: 15
+    });
+
+    //var textMaterial = new THREE.MeshPhongMaterial( { color: 0x000000 } );
+
+    var mesh1 = new THREE.Mesh( textGeo, [
+        new THREE.MeshPhongMaterial({ color: 0xff0000}),
+        new THREE.MeshPhongMaterial({ color: 0xff0000})
+    ] );
+    mesh1.position.x = 1
+    mesh1.position.y = 1
+    mesh1.position.z = 1
+    scene.add( mesh1 );
+})
+
+
+
+on_window_resize = () =>{
+    renderer.setSize(window.innerWidth, window.innerHeight-50);
+    camera.aspect = window.innerWidth / (window.innerHeight - 50);
+    camera.updateProjectionMatrix();
+}
+
+
+renderer.render(scene, camera);
+
+x=0
+y=0
+z=0
+a=0;b=0;c=0;
+speed = 0.15;
+rotspeed = Math.PI *speed/25;
+listentyping = false;
+listencamera = true;
+typedword = "";
+
+camera.position.set(x,y,z);
+camera.lookAt(x-Math.sin(b),y+Math.sin(a),z-Math.cos(b));
+
+updaterender = () => {
+    camera.position.set(x,y,z);
+    camera.lookAt(x-Math.sin(b),  y+Math.sin(a),   z-Math.cos(b));
+    // +sin(a) to both for y upside down??
+    renderer.render(scene, camera);
+}
+
+enter_handler = () => {
+    if(listencamera == true) {
+        listencamera = false;
+        listentyping = true;
+        div.innerHTML = globals.typingmode_label;
+        return;
+    }
+    if(listentyping == true){
+        execute_command();
+        typedword = "";
+        div.innerHTML = globals.cameramode_label;
+        listentyping = false;
+        listencamera = true;
+    }
+}
+
+// remove grid element search here
+remove_grid_element = () => {
+
+}
+
+// have remove function
+// display coordinates of camera
+// option to display of list of objects in scene
+
+// the sadness of leaving
+// the joy of returning
+// the appreciation of staying
+// the curiosity of being alone
+// responsiveness
+get_parameters = () =>
+{
+    parameters = {};
+    words = typedword.split(" ");
+    parameters.geometry = words[0];
+    words.length > 1? parameters.gridx = parseInt(words[1]) : parameters.gridx = 0;
+    words.length > 2? parameters.gridy = parseInt(words[2]) : parameters.gridy = 0;
+    words.length > 3? parameters.gridz = parseInt(words[3]) : parameters.gridz = 0;
+    words.length > 4? parameters.width = parseInt(words[4]) : parameters.width = 1;
+    words.length > 5? parameters.height = parseInt(words[5]) : parameters.height = 1;
+    words.length > 6? parameters.depth = parseInt(words[6]) : parameters.depth = 1;
+    words.length > 7? parameters.color = words[7] : parameters.color = "white";
+    words.length > 8? parameters.intensity = words[8] : parameters.intensity = 1.0;
+    words.length > 9? parameters.text = words[9] : parameters.text = "";
+    words.length > 10? parameters.rotationx = words[10] : parameters.rotationx = 0.0;
+    words.length > 11? parameters.rotationy = words[11] : parameters.rotationy = 0.0;
+    words.length > 12? parameters.rotationz = words[12] : parameters.rotationz = 0.0;
+    return parameters;
+}
+
+draw_light = (parameters) => {
+    const pointlight = new THREE.PointLight(parameters.color,1.0);
+    pointlight.position.set(parameters.gridx,parameters.gridy,parameters.gridz);
+    scene.add(pointlight);
+    updaterender();
+}
+
+draw_box = (parameters) => {
+    propmaterial = new THREE.MeshPhongMaterial({color:parameters.color,flatShading:false,side:THREE.DoubleSide});
+    propgeometry = new THREE.BoxGeometry(parameters.width,parameters.height,parameters.depth);
+    propmesh = new THREE.Mesh(propgeometry,propmaterial);
+    propmesh.position.set(parameters.gridx,parameters.gridy,parameters.gridz);
+    propmesh.rotation.set(parameters.rotationx,parameters.rotationy,parameters.rotationz);
+    scene.add(propmesh);
+    updaterender();
+}
+
+draw_text = (parameters) => {
+
+}
+
+draw_plane = (parameters) => {
+    propmaterial = new THREE.MeshPhongMaterial({color:parameters.color,flatShading:false,side:THREE.DoubleSide});
+    propgeometry = new THREE.PlaneGeometry(parameters.width,parameters.height);
+    propmesh = new THREE.Mesh(propgeometry,propmaterial);
+    propmesh.position.set(parameters.gridx,parameters.gridy,parameters.gridz);
+    propmesh.rotation.set(parameters.rotationx,parameters.rotationy,parameters.rotationz);
+
+
+    scene.add(propmesh);
+    updaterender();
+}
+
+draw_torus = (parameters) => {
+    propmaterial = new THREE.MeshPhongMaterial({color:parameters.color,flatShading:false,side:THREE.DoubleSide});
+    propgeometry = new THREE.TorusGeometry(parameters.width,parameters.height,parameters.depth,50);
+    propmesh = new THREE.Mesh(propgeometry,propmaterial);
+    propmesh.position.set(parameters.gridx,parameters.gridy,parameters.gridz);
+    propmesh.rotation.set(parameters.rotationx,parameters.rotationy,parameters.rotationz);
+    scene.add(propmesh);
+    updaterender();
+}
+
+draw_sphere = (parameters) => {
+    propmaterial = new THREE.MeshPhongMaterial({color:parameters.color,flatShading:false,side:THREE.DoubleSide});
+    propgeometry = new THREE.SphereGeometry(parameters.width,parameters.height,parameters.height);
+    propmesh = new THREE.Mesh(propgeometry,propmaterial);
+    propmesh.position.set(parameters.gridx,parameters.gridy,parameters.gridz);
+    propmesh.rotation.set(parameters.rotationx,parameters.rotationy,parameters.rotationz);
+    scene.add(propmesh);
+    updaterender();
+}
+
+redraw_on_position = () => {
+
+}
+
+draw_wall = (parameters) => {
+    parameters.gridx = camera.position.x;
+    parameters.gridy = camera.position.y;
+    parameters.gridz = camera.position.z;
+    parameters.gridz-=5.0*Math.cos(b);
+    parameters.gridy-=5.0*Math.sin(-a);
+    parameters.gridx-=5.0*Math.sin(b);
+    parameters.width = 3;
+    parameters.height = 3;
+    parameters.rotationx = camera.rotation.x;
+    parameters.rotationy = camera.rotation.y;
+    parameters.rotationz = camera.rotation.z;
+    draw_plane(parameters);
+}
+
+draw_floor = (parameters) => {
+    parameters.gridx = camera.position.x;
+    parameters.gridy = camera.position.y;
+    parameters.gridz = camera.position.z;
+    parameters.gridz-=5.0*Math.cos(b);
+    parameters.gridy-=5.0*Math.sin(-a) + 1.0;
+    parameters.gridx-=5.0*Math.sin(b);
+    parameters.width = 3;
+    parameters.height = 3;
+    parameters.rotationx = Math.PI/2;
+    parameters.rotationy = 0;
+    parameters.rotationz = camera.rotation.y;
+    draw_plane(parameters);
+}
+
+execute_command = () =>{
+    // get parameters
+    if (typedword != "redraw"){
+        parameters = get_parameters();
+    }
+    else {
+        parameters.gridx = camera.position.x;
+        parameters.gridy = camera.position.y;
+        parameters.gridz = camera.position.z;
+    }
+    if (parameters.geometry == "wall"){
+        draw_wall(parameters);
+    }
+    if (parameters.geometry == "floor"){
+        draw_floor(parameters);
+    }
+    if (parameters.geometry == "light"){
+        draw_light(parameters);
+    }
+    if (parameters.geometry == "box"){
+        draw_box(parameters);
+    }
+    if (parameters.geometry == "plane" || typedword == "planeconnect"){
+        draw_plane(parameters);
+    }
+    if (parameters.geometry == "torus"){
+        draw_torus(parameters);
+    }
+    if (parameters.geometry == "text"){
+        draw_text(parameters);
+    }
+    if (parameters.geometry == "sphere"){
+        draw_sphere(parameters);
+    }
+    if (parameters.geometry == "speed"){
+        speed = paramaters.gridx;
+    }
+    if (parameters.geometry == "fog"){
+        scene.fog = new THREE.Fog(parameters.color, parameters.gridx, parameters.gridy);
+        updaterender();
+    }
+    if (parameters.geometry == "background"){
+        scene.background = new THREE.Color(parameters.color);
+        updaterender();
+    }
+    // cylinder
+    // cone
+    // tube
+
+ 
+
+}
+
+// event listener
+// move-rename
+// move-reader
+// move-scope
+// switch
+// flags
+
+
+
+camera_w_timer = setTimeout(() => {},1);
+camera_a_timer = setTimeout(() => {},1);
+camera_s_timer = setTimeout(() => {},1);
+camera_d_timer = setTimeout(() => {},1);
+
+camera_f_timer = setTimeout(() => {},1);
+camera_r_timer = setTimeout(() => {},1);
+camera_g_timer = setTimeout(() => {},1);
+camera_t_timer = setTimeout(() => {},1);
+
+camera_e_timer = setTimeout(() => {},1);
+camera_q_timer = setTimeout(() => {},1);
+camera_z_timer = setTimeout(() => {},1);
+camera_c_timer = setTimeout(() => {},1);
+
+camera_w_timer_count = 0;
+camera_a_timer_count = 0;
+camera_s_timer_count = 0;
+camera_d_timer_count = 0;
+
+camera_f_timer_count = 0;
+camera_r_timer_count = 0;
+camera_g_timer_count = 0;
+camera_t_timer_count = 0;
+
+camera_e_timer_count = 0;
+camera_q_timer_count = 0;
+camera_z_timer_count = 0;
+camera_c_timer_count = 0;
+
+camera_w = () => {
+    z-=speed*Math.cos(b);
+    y-=speed*Math.sin(-a);
+    x-=speed*Math.sin(b);
+    updaterender();
+}
+camera_s = () => {
+    z+=speed*Math.cos(b);
+    y+=speed*Math.sin(-a);
+    x+=speed*Math.sin(b);
+    updaterender();
+}
+camera_a = () => {
+    z-=speed*Math.sin(-b);
+    y-=speed*Math.sin(c);
+    x-=speed*Math.cos(-b);
+    updaterender();
+}
+camera_d = () => {
+    z+=speed*Math.sin(-b);
+    y+=speed*Math.sin(c);
+    x+=speed*Math.cos(-b);
+    updaterender();
+}
+
+camera_f = () => {
+    y-=speed;
+    updaterender();
+}
+camera_r = () => {
+    y+=speed;
+    updaterender();
+}
+camera_g = () => {
+    a-=rotspeed
+    updaterender();
+}
+camera_t = () => {
+    a+=rotspeed
+    updaterender();
+}
+
+camera_e = () => {
+    b-=rotspeed
+    updaterender();
+}
+camera_q = () => {
+    b+=rotspeed
+    updaterender();
+}
+camera_z = () => {
+    c-=rotspeed
+    updaterender();
+}
+camera_c = () => {
+    c+=rotspeed 
+    updaterender();
+}
+
+
+camerahandler_keydown = (event) =>{
+    if (event.key == "1"){
+        typedword = "redraw";
+        execute_command();
+        return;
+    }
+    // position keys
+    if(event.key=="w"){
+        if (camera_w_timer_count > 0) return;
+        camera_w_timer_count++;
+        camera_w_timer = setInterval(camera_w,6);
+    }
+    if(event.key=="s"){
+        if (camera_s_timer_count > 0) return;
+        camera_s_timer_count++;
+        camera_s_timer = setInterval(camera_s,6);
+    }
+    if(event.key=="a"){
+        if (camera_a_timer_count > 0) return;
+        camera_a_timer_count++;
+        camera_a_timer = setInterval(camera_a,6);
+    }
+    if(event.key=="d"){
+        if (camera_d_timer_count > 0) return;
+        camera_d_timer_count++;
+        camera_d_timer = setInterval(camera_d,6);
+    }
+    if(event.key=="f"){
+        if (camera_f_timer_count > 0) return;
+        camera_f_timer_count++;
+        camera_f_timer = setInterval(camera_f,6);
+        //z-=speed*Math.sin(b);
+        //y-=speed*Math.cos(c);
+        //x-=speed*Math.sin(b);
+    }
+    if(event.key=="r"){
+        if (camera_r_timer_count > 0) return;
+        camera_r_timer_count++;
+        camera_r_timer = setInterval(camera_r,6);
+        //z+=speed*Math.sin(b);
+        //y+=speed*Math.cos(c);
+        //x+=speed*Math.sin(b);
+    }
+    // rotation keys
+    if(event.key=="g"){
+        if (camera_g_timer_count > 0) return;
+        camera_g_timer_count++;
+        camera_g_timer = setInterval(camera_g,6);
+    }
+    if(event.key=="t"){
+        if (camera_t_timer_count > 0) return;
+        camera_t_timer_count++;
+        camera_t_timer = setInterval(camera_t,6);
+    }
+    if(event.key=="e"){
+        if (camera_e_timer_count > 0) return;
+        camera_e_timer_count++;
+        camera_e_timer = setInterval(camera_e,6);
+    }
+    if(event.key=="q"){
+        if (camera_q_timer_count > 0) return;
+        camera_q_timer_count++;
+        camera_q_timer = setInterval(camera_q,6);
+    }
+    if(event.key=="z"){
+        if (camera_z_timer_count > 0) return;
+        camera_z_timer_count++;
+        camera_z_timer = setInterval(camera_z,6);
+    }
+    if(event.key=="c"){
+        if (camera_c_timer_count > 0) return;
+        camera_c_timer_count++;
+        camera_c_timer = setInterval(camera_c,6);
+    }
+}
+
+camerahandler_keyup = (event) => {
+    // position keys
+    if(event.key=="w"){
+        camera_w_timer_count=0;
+        clearInterval(camera_w_timer);
+    }
+    if(event.key=="s"){
+        camera_s_timer_count=0;
+        clearInterval(camera_s_timer);
+    }
+    if(event.key=="a"){
+        camera_a_timer_count=0;
+        clearInterval(camera_a_timer);
+    }
+    if(event.key=="d"){
+        camera_d_timer_count=0;
+        clearInterval(camera_d_timer);
+    }
+    if(event.key=="f"){
+        camera_f_timer_count=0;
+        clearInterval(camera_f_timer);
+    }
+    if(event.key=="r"){
+        camera_r_timer_count=0;
+        clearInterval(camera_r_timer);
+    }
+    // rotation keys
+    if(event.key=="g"){
+        camera_g_timer_count=0;
+        clearInterval(camera_g_timer);
+    }
+    if(event.key=="t"){
+        camera_t_timer_count=0;
+        clearInterval(camera_t_timer);
+    }
+    if(event.key=="e"){
+        camera_e_timer_count=0;
+        clearInterval(camera_e_timer);
+    }
+    if(event.key=="q"){
+        camera_q_timer_count=0;
+        clearInterval(camera_q_timer);
+    }
+    if(event.key=="z"){
+        camera_z_timer_count=0;
+        clearInterval(camera_z_timer);
+    }
+    if(event.key=="c"){
+        camera_c_timer_count=0;
+        clearInterval(camera_c_timer);
+    }
+}
+
+
+listentypinghandler = (event) =>{
+    if(event.key == "Enter") return;
+
+    if(event.key == "Backspace"){
+        typedword = typedword.substring(0,typedword.length - 1);
+    }
+
+    if(event.key != "Backspace"){
+        typedword += event.key;
+    }
+
+    div.innerHTML = "typing mode: " + typedword + "|";
+}
+
+window.addEventListener("keydown",(event)=>{
+    if(event.key == "Enter"){
+        enter_handler();
+    }
+    if(listencamera == true) {
+        camerahandler_keydown(event);
+    }
+    if(listentyping == true){
+        listentypinghandler(event);
+    }
+})
+
+window.addEventListener("keyup",(event)=>{
+    if(listencamera == true) {
+        camerahandler_keyup(event);
+    }
+})
+
+//spots
+window.addEventListener("resize", on_window_resize);
+
+window.addEventListener("pointerdown", () => {
+    typedword = "redraw";
+    execute_command();
+})
+
+/*
+window.addEventListener("pointerdown",(event)=>{
+    mouse = new THREE.Vector2()
+    raycaster = new THREE.Raycaster();
+    intersection = raycaster.intersectObjects(scene.children);
+    if (intersection.length > 0){
+        intersection[0].object.material.position.x
+    }
+})
+*/
+
+
+</script>
+</body>
+</html>
