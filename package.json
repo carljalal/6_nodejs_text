@@ -1,0 +1,22 @@
+{
+  "name": "6_nodejs_text",
+  "version": "1.0.0",
+  "description": "this is a readme for first commit and any dev ideas",
+  "main": "three.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/carljalal/6_nodejs_text.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/carljalal/6_nodejs_text/issues"
+  },
+  "homepage": "https://github.com/carljalal/6_nodejs_text#readme",
+  "dependencies": {
+    "three": "^0.141.0"
+  }
+}
